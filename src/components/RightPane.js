@@ -1,30 +1,26 @@
-import React from 'react'
+import React, {useState} from 'react'
 import styles from "../styles/splitScreen.css"
 import axios from 'axios';
 import { makeStyles } from '@material-ui/core/styles';
-import Card from '@material-ui/core/Card';
-import CardActions from '@material-ui/core/CardActions';
-import CardContent from '@material-ui/core/CardContent';
-import Button from '@material-ui/core/Button';
-import Typography from '@material-ui/core/Typography';
+import { TextField, Card, CardActions, CardContent, Button, Typography, Box, Popover } from '@material-ui/core';
+import PopupState, { bindTrigger, bindPopover } from 'material-ui-popup-state';
 
 export default function RightPane(props) {
 
-    let data = ["text1", "name", "text2", "publication"]
 
     let displayScraped = (data) => {
         let elems = []
-        for (let i = 0; i < data.length; i += 2) {
+        for (let i = 0; i < data.length; i++) {
             elems.push(
-                <SimpleCard text={data[i]} classifcation={data[i + 1]} />
+                <SimpleCard text={data[i][0]} label={data[i][1]} />
             )
         }
         return elems
     }
 
     return (
-        <div className={styles.pane} >
-            {displayScraped(data)}
+        <div className={styles.pane}>
+            {displayScraped(props.conceptTerms)}
         </div>
     )
 }
@@ -54,15 +50,107 @@ function SimpleCard(props) {
     return (
         <Card className={classes.root}>
             <CardContent>
-                <Typography className={classes.pos} color="textSecondary">
-                    {props.classifcation}
-                </Typography>
+                <LabelField classes={classes} text={props.text} label={props.label} />
 
                 <Typography className={classes.title} color="" gutterBottom>
-                    Text: {props.text}
+                    {props.text}
                 </Typography>
             </CardContent>
 
         </Card>
     );
+}
+
+function LabelField(props) {
+
+    return (
+        <Typography className={props.classes.pos} color="textSecondary">
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+            }}>
+                {props.label}
+                <PopoverPopupState text={props.text} label={props.label} />
+            </div>
+
+        </Typography >
+    )
+}
+
+function PopoverPopupState(props) {
+    return (
+        <PopupState variant="popover" popupId="demo-popup-popover">
+            {(popupState) => (
+                <div>
+                    <Button color="primary" {...bindTrigger(popupState)}>
+                        Update Label
+                    </Button>
+                    <Popover
+                        {...bindPopover(popupState)}
+                        anchorOrigin={{
+                            vertical: 'bottom',
+                            horizontal: 'center',
+                        }}
+                        transformOrigin={{
+                            vertical: 'top',
+                            horizontal: 'center',
+                        }}
+                    >
+                        <Box p={2}>
+                            <UpdateLabel text={props.text} label={props.label} />
+                        </Box>
+                    </Popover>
+                </div>
+            )}
+        </PopupState>
+    );
+}
+
+function UpdateLabel(props) {
+    const backendURL = "http://localhost:8000/api/"
+
+    // sends new label to backend
+    const update = (text,label) => {
+        var data = JSON.stringify({ "text": text, "label" : label });
+
+        var config = {
+            method: 'post',
+            url: 'http://localhost:8000/api/updateLabel',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            data: data
+        };
+
+        axios(config)
+            .then(function (response) {
+                console.log(JSON.stringify(response.data));
+                // setRawHTML(response.data.rawHTML)
+                // setConceptTerms(response.data.conceptTerms)
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+    }
+    
+    const [newLabel, setNewLabel] = useState(props.label);
+
+    return (
+        <span>
+            {/* <div>Current: <i>{props.label}</i></div>
+            <br></br> */}
+            <div>
+                Label: <br></br>
+                <TextField id="standard-basic" label="Update" value={newLabel} onChange={(e) => { setNewLabel(e.target.value) }}/>
+            </div>
+            <br></br>
+
+            <Button variant="contained" color="primary" onClick={() => {update(props.text, newLabel)}}>
+                Verify
+            </Button>
+
+        </span>
+    )
 }
