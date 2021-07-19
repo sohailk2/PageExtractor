@@ -9,7 +9,7 @@ mongo_db = mongo_client.ForwardData_PageExtractor
 
 #can be useful for testing with input
 def getLabel(clf, nlp, sentence):
-    labels = {0: "Other", 1 : "Education", 2 : "Biography", 3 : "Research Interest", 4 : "Award"}
+    labels = {0: "Other", 1 : "Education", 2 : "Biography", 3 : "Research Interest", 4 : "Award", 5 : "Publication"}
     vect = nlp(sentence).vector
     y = int(clf.predict([vect])[0])
     return labels[y]
