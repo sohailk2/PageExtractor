@@ -10,6 +10,12 @@ import requests
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup as Soup
 
+import lxml
+from lxml.html.clean import Cleaner
+from lxml import etree
+from io import StringIO
+
+
 from classifiers.svm import classify as svmClassify
 
 from classifiers.general import updateLabel_mongo
@@ -37,12 +43,13 @@ def getWebsite(request):
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
     #this header is specific to me, but it will work for anyone. some websites will block the GET request if this header is not present
     website = requests.get(url, headers=headers).content.decode()
-    soup = Soup(website, features="lxml")
     
-    page = downloadRawHTML(soup, url)
-    conceptTerms = getConceptTerms(soup)
-   
-    return JsonResponse({"rawHTML": page, "conceptTerms": conceptTerms})
+
+    soup = Soup(website, features="lxml")    
+
+    rawHTML, tree, contents = downloadRawHTML(soup, url)
+    xpaths, conceptTerms = parseAndLabel(tree) #concept terms also contains the cleaned text
+    return JsonResponse({"rawHTML": contents, "conceptTerms": conceptTerms, "xpaths" : xpaths})
 
 def downloadRawHTML(soup, url):
     # dynamic website code from Aziz: 
@@ -53,24 +60,48 @@ def downloadRawHTML(soup, url):
     base['href'] = base_url
     head.insert(1, base)
     contents = str(soup)
-    return contents
+    # return contents
 
-def getConceptTerms(soup):
-    for script in soup(["script", "style", "button"]):                   
-        script.decompose()  
+    cleaner = Cleaner()
+    cleaner.remove_unknown_tags = False
+    cleaner.javascript = True
+    cleaner.style = True 
+    cleaner.kill_tags = ['button']
 
-    elems = soup.body.findAll(text=True, recursive=True) 
+    f = StringIO(contents)
+    tree = lxml.html.parse(f)
+    # tree = cleaner.clean_html(tree)
 
-    # clean
-    cleaned = []
-    for elem in elems:
-        elem = elem.strip()
+    # doc = tree.getroot()
+    # doc.make_links_absolute(url)
 
-        if elem != '\n' and elem != '':
-            classifed = classifyConceptTerm(elem)
-            cleaned.append((elem, classifed))
+    html = etree.tostring(tree).decode("utf-8")
+
+    return html, tree, contents
+
+def parseAndLabel(tree):
+    #old soup method
+    # for script in soup(["script", "style", "button"]):                   
+    #     script.decompose()  
+
+    # elems = soup.body.findAll(text=True, recursive=True) 
+
+    # lxml parsing
+    find_text = etree.XPath("//text()")
+    
+    classified = []
+    xpaths = []
+    for text in find_text(tree):
+        rawText = text
+        xpath = tree.getpath( text.getparent())
+
+        cleaned = rawText.strip() 
+        if cleaned != '\n' and cleaned != '':
+            label = classifyConceptTerm(cleaned)
+            classified.append((cleaned, label))
+            xpaths.append(xpath)
         
-    return cleaned
+    return xpaths, classified
 
 def classifyConceptTerm(concept_term):
     return svmClassify(concept_term)

@@ -71,11 +71,11 @@ export default function RightPane(props) {
         // alert(metrics.accuracy.correct)
     }
 
-    const displayScraped = (data) => {
+    const displayScraped = (data, xpaths) => {
         let elems = []
         for (let i = 0; i < data.length; i++) {
             elems.push(
-                <SimpleCard text={data[i][0]} label={data[i][1]} updateDashboard={updateDashboard}/>
+                <SimpleCard text={data[i][0]} label={data[i][1]} updateDashboard={updateDashboard} xpath={xpaths[i]} highlight={props.highlight}/>
             )
         }
         return elems
@@ -88,7 +88,7 @@ export default function RightPane(props) {
             </div> */}
             <Metrics metrics={metrics}/>
             <div style={{ marginTop: (sizeOfDashboard) + 'px' }}>
-                {displayScraped(props.conceptTerms)}
+                {displayScraped(props.conceptTerms, props.xpaths)}
             </div>
         </div>
     )
@@ -124,6 +124,11 @@ function SimpleCard(props) {
         <Card className={classes.root}>
             <CardContent>
                 <LabelField classes={classes} text={props.text} label={props.label} updateDashboard={props.updateDashboard}/>
+                
+                <Button variant="contained" color="primary" onClick={() => props.highlight(props.xpath)}>Highlight</Button>
+                <Typography className={classes.title} color="" gutterBottom>
+                    - {props.xpath}
+                </Typography>
 
                 <Typography className={classes.title} color="" gutterBottom>
                     {props.text}

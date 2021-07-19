@@ -31,8 +31,12 @@ export default function Home() {
 
     const [rawHTML, setRawHTML] = useState("")
     const [conceptTerms, setConceptTerms] = useState([])
+    const [xpaths, setXpaths] = useState([])
     const [frameURL, setFrameURL] = useState("https://waf.cs.illinois.edu/");
     const [textURL, setTextURL] = useState("https://waf.cs.illinois.edu/");
+
+    const [highlightXPATH, setHighlightFunc] = useState(() => () => ""); //default value a function that calls a function
+
 
     const updatePanes = (url) => {
 
@@ -53,6 +57,7 @@ export default function Home() {
                 // console.log(JSON.stringify(response.data));
                 setRawHTML(response.data.rawHTML)
                 setConceptTerms(response.data.conceptTerms)
+                setXpaths(response.data.xpaths)
             })
             .catch(function (error) {
                 console.log(error);
@@ -105,10 +110,10 @@ export default function Home() {
             <SplitPane split="vertical" minSize={200} defaultSize={1200} maxSize={400} pane2Style={{ overflowY: 'auto' }}>
                 {/* src: https://codesandbox.io/s/wr0gf?file=/src/App.tsx */}
                 <div>
-                    <LeftPane frameURL={frameURL} rawHTML={rawHTML} />
+                    <LeftPane frameURL={frameURL} rawHTML={rawHTML} setHighlightFunc={setHighlightFunc}/>
                 </div>
                 <div>
-                    <RightPane frameURL={frameURL} conceptTerms={conceptTerms} />
+                    <RightPane frameURL={frameURL} conceptTerms={conceptTerms} xpaths={xpaths} highlight={highlightXPATH}/>
                 </div>
             </SplitPane>
 
