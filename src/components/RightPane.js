@@ -4,6 +4,7 @@ import axios from 'axios';
 import { makeStyles } from '@material-ui/core/styles';
 import { TextField, Card, CardActions, CardContent, Button, Typography, Box, Popover, Select, MenuItem, InputLabel, FormControl } from '@material-ui/core';
 import PopupState, { bindTrigger, bindPopover } from 'material-ui-popup-state';
+import Chart from "react-google-charts";
 
 
 //need to make this dynamic later
@@ -33,22 +34,27 @@ const useStyles = makeStyles({
         position: 'fixed',
         marginTop: (-1 * sizeOfDashboard) + 'px',
         // width: '80%',
+        maxWidth: '475px',
+        width: '100%',
         zIndex: '2',
-        margin: '5px'
+        // margin: '5px',
+        // minWidth: '45%',
+        margin: '3px',
+        overflowY: 'scroll',
     }
 });
 
 
 export default function RightPane(props) {
 
-    
+
     // let metrics = {
     //     correct: 0,
     //     incorrect: 0,
     // }
 
-    const [metrics, setMetrics] = useState({accuracy: {correct: 0, incorrect: 0}});
- 
+    const [metrics, setMetrics] = useState({ accuracy: { correct: 0, incorrect: 0 }, classMetric: {} });
+
 
     const updateDashboard = (predicted, actual) => {
 
@@ -61,11 +67,13 @@ export default function RightPane(props) {
             oldMetrics.accuracy.incorrect++
         }
 
+        const class_key = "classMetric"
+
         //update store for confusion matrix
-        if (oldMetrics[actual] == undefined) {
-           oldMetrics[actual] = {}
+        if (oldMetrics[class_key][actual] == undefined) {
+            oldMetrics[class_key][actual] = {}
         }
-        oldMetrics[actual][predicted] = (oldMetrics[actual][predicted] + 1) || 1;
+        oldMetrics[class_key][actual][predicted] = (oldMetrics[class_key][actual][predicted] + 1) || 1;
 
         setMetrics(oldMetrics)
         // alert(metrics.accuracy.correct)
@@ -75,18 +83,18 @@ export default function RightPane(props) {
         let elems = []
         for (let i = 0; i < data.length; i++) {
             elems.push(
-                <SimpleCard text={data[i][0]} label={data[i][1]} updateDashboard={updateDashboard} xpath={xpaths[i]} highlight={props.highlight}/>
+                <SimpleCard text={data[i][0]} label={data[i][1]} updateDashboard={updateDashboard} xpath={xpaths[i]} highlight={props.highlight} />
             )
         }
         return elems
     }
 
     return (
-        <div className={styles.pane}>
+        <div className={styles.pane} style={{ minWidth: '100%' }}>
             {/* <div style={{ position: 'fixed', marginLeft: '30px', marginTop: '-100px' }}>
                 hi2
             </div> */}
-            <Metrics metrics={metrics}/>
+            <Metrics metrics={metrics} />
             <div style={{ marginTop: (sizeOfDashboard) + 'px' }}>
                 {displayScraped(props.conceptTerms, props.xpaths)}
             </div>
@@ -104,15 +112,90 @@ function Metrics(props) {
         // }
     }, [props.metrics])
 
+    function genChart(data) {
+        return (
+            <Chart
+                width={'500px'}
+                height={'300px'}
+                chartType="BarChart"
+                loader={<div>Loading Chart</div>}
+                data={data}
+                options={{
+                    title: 'Label Innacuracy',
+                    chartArea: { width: '50%' },
+                    isStacked: true,
+                    hAxis: {
+                        title: 'Distribution',
+                        minValue: 0,
+                    },
+                    vAxis: {
+                        title: 'Labels',
+                        min: 0,
+                    },
+                }}
+                // For tests
+                rootProps={{ 'data-testid': '3' }}
+            />
+        )
+    }
+
+    function prettifyMetrics(metrics) {
+
+        const data = [
+            ['City', '2010 Population', '2000 Population'],
+            ['New York City, NY', 30, 60],
+            // ['Los Angeles, CA', 3792000, 3694000],
+            // ['Chicago, IL', 2695000, 2896000],
+            // ['Houston, TX', 2099000, 1953000],
+            // ['Philadelphia, PA', 1526000, 1517000],
+        ]
+
+        let cleaned = [
+            ["Label", ...labels],
+        ]
+
+        console.log(metrics)
+        for (const [key, labelMetrics] of Object.entries(metrics["classMetric"])) {
+            //ok so format i need is [key, then the values in value]
+            // console.log(key, labelMetrics)
+            let extracted = []
+            let sum = 0
+            for (const label of labels) {
+                // console.log(label, labelMetrics[label])
+                let val = labelMetrics[label]
+                if (val == undefined) {
+                    val = 0;
+                }
+                extracted.push(val)
+                sum += val
+            }
+
+            // ok so now convert to percentage
+            extracted = extracted.map((val) => val/sum * 100)
+
+            cleaned.push([key,...extracted])
+        }
+
+        console.log(cleaned) 
+
+        return (
+            <div>
+                {genChart(cleaned)}
+                {JSON.stringify(metrics["classMetric"])}
+            </div>
+        )
+    }
+
+
     return (
         <Card className={classes.dashboardCard}>
             {/* 
             Need to display accuracy
             - accuracies for each label???
         */}
-        {JSON.stringify(props.metrics)}
-        <br></br>
-        <h3>Accuracy: {props.metrics.accuracy.correct / (props.metrics.accuracy.correct + props.metrics.accuracy.incorrect + .01) * 100}%</h3>
+            <h3>Accuracy: {props.metrics.accuracy.correct / (props.metrics.accuracy.correct + props.metrics.accuracy.incorrect + .01) * 100}%</h3>
+            <br></br>
+            {prettifyMetrics(props.metrics)}
         </Card>
     )
 }
@@ -123,8 +206,8 @@ function SimpleCard(props) {
     return (
         <Card className={classes.root}>
             <CardContent>
-                <LabelField classes={classes} text={props.text} label={props.label} updateDashboard={props.updateDashboard}/>
-                
+                <LabelField classes={classes} text={props.text} label={props.label} updateDashboard={props.updateDashboard} />
+
                 <Button variant="contained" color="primary" onClick={() => props.highlight(props.xpath)}>Highlight</Button>
                 <Typography className={classes.title} color="" gutterBottom>
                     - {props.xpath}
@@ -149,7 +232,7 @@ function LabelField(props) {
                 flexWrap: 'wrap',
             }}>
                 {props.label}
-                <PopoverPopupState text={props.text} label={props.label} updateDashboard={props.updateDashboard}/>
+                <PopoverPopupState text={props.text} label={props.label} updateDashboard={props.updateDashboard} />
             </div>
 
         </Typography >
@@ -157,12 +240,15 @@ function LabelField(props) {
 }
 
 function PopoverPopupState(props) {
+
+    const [disabled, setDisabled] = useState(false)
+    const [verifyLabel, setVerifyLabel] = useState("Verify Label")
     return (
         <PopupState variant="popover" popupId="demo-popup-popover">
             {(popupState) => (
                 <div>
-                    <Button color="primary" {...bindTrigger(popupState)}>
-                        Verify Label
+                    <Button color="primary" {...bindTrigger(popupState)} disabled={disabled}>
+                        {verifyLabel}
                     </Button>
                     <Popover
                         {...bindPopover(popupState)}
@@ -176,7 +262,7 @@ function PopoverPopupState(props) {
                         }}
                     >
                         <Box p={2}>
-                            <UpdateLabel text={props.text} label={props.label} updateDashboard={props.updateDashboard}/>
+                            <UpdateLabel text={props.text} label={props.label} updateDashboard={props.updateDashboard} verify={() => { setDisabled(true); setVerifyLabel("Verified") }} />
                         </Box>
                     </Popover>
                 </div>
@@ -262,11 +348,11 @@ function UpdateLabel(props) {
 
                 <br></br>
 
-                <Button variant="contained" color="primary" onClick={() => { update(props.text, newLabel); props.updateDashboard(props.label, props.label) }}>
+                <Button variant="contained" color="primary" onClick={() => { update(props.text, newLabel); props.updateDashboard(props.label, props.label); props.verify() }}>
                     Correct
                 </Button>
                 <br></br>
-                <Button variant="contained" color="secondary" onClick={() => { update(props.text, newLabel); props.updateDashboard(props.label, newLabel) }}>
+                <Button variant="contained" color="secondary" onClick={() => { update(props.text, newLabel); props.updateDashboard(props.label, newLabel); props.verify() }}>
                     Update
                 </Button>
             </FormControl>
