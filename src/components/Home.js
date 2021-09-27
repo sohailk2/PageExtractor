@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { Button, TextField } from '@material-ui/core';
+import { Button, TextField, Link } from '@material-ui/core';
 import SplitPane, { Pane } from 'react-split-pane';
 import SimplePaper from "./paper.tsx"
 import LeftPane from './LeftPane';
 import RightPane from './RightPane';
+import InputLabel from '@material-ui/core/InputLabel';
+import FormHelperText from '@material-ui/core/FormHelperText';
+import FormControl from '@material-ui/core/FormControl';
+import Select from '@material-ui/core/Select';
+import NativeSelect from '@material-ui/core/NativeSelect';
 
 import Cookies from 'js-cookie';
 import axios from 'axios';
@@ -37,11 +42,12 @@ export default function Home() {
 
     const [highlightXPATH, setHighlightFunc] = useState(() => () => ""); //default value a function that calls a function
 
+    const [classifier, setClassifier] = useState(1)
 
-    const updatePanes = (url) => {
+    const updatePanes = (url, classifier) => {
 
 
-        var data = JSON.stringify({ "url": url });
+        var data = JSON.stringify({ "url": url, classifier: classifier });
 
         var config = {
             method: 'post',
@@ -67,55 +73,41 @@ export default function Home() {
         setFrameURL(frameURL)
     }
 
-    /*
-    const styles = {
-        splitScreen : {
-            display: 'flex',
-            // flexDirection: 'row'
-        },
-        topPane: {
-            width: '50%'
-        },
-        bottomPane: {
-            width: '50%'
-        }
-    }
-    */
-
     return (
         <div style={{ marginTop: '', justify: 'left', height: '100vh' }}>
             <center>
                 <div>
                     <TextField style={{ width: '85%' }} id="standard-basic" shrink={false} value={textURL} onChange={(e) => { setTextURL(e.target.value) }} />
-                    <Button variant="contained" onClick={() => { updatePanes(textURL); }}>Go</Button>
+                    <Button variant="contained" onClick={() => { updatePanes(textURL, classifier); }}>Go</Button>
+                    {' '}
+                    <FormControl variant="filled">
+                        <InputLabel htmlFor="filled-age-native-simple">Model</InputLabel>
+                        <Select
+                            native
+                            value={classifier}
+                            onChange={(event) => setClassifier(event.target.value)}
+                        >
+                            <option value={0}>RF TF-IDF</option>
+                            <option value={1}>SVM Spacy</option>
+                            <option value={2}>SVM TF-IDF</option>
+                            <option value={3}>SVM RBF TF-IDF</option>
+                        </Select>
+                    </FormControl>
                 </div>
+
+                <a target="_blank" href="https://docs.google.com/document/d/1yAes3hF7WPDv2Y3SzAB_KHFZC7mtggTX6HMZhZMEhuM/edit?usp=sharing">Labeling Guidlines</a>
             </center>
-
-
-            {/* <div className={styles.splitScreen}>
-                <div className={styles.topPane}>{<iframe src={frameURL} />}</div>
-                <div className={styles.bottomPane}>{<iframe src={frameURL} />}</div>
-            </div> */}
-            {/* <div style={{ width: '100%', color: 'red', borderStyle: 'solid' }}>
-                <SplitPane split="vertical" >
-                    <Pane>
-                        Lefr
-                </Pane>
-                    <Pane>
-                        Right
-                </Pane>
-                </SplitPane>
-            </div> */}
 
             <SplitPane split="vertical" minSize={200} defaultSize={1200} maxSize={400} pane2Style={{ overflowY: 'auto' }}>
                 {/* src: https://codesandbox.io/s/wr0gf?file=/src/App.tsx */}
                 <div>
-                    <LeftPane frameURL={frameURL} rawHTML={rawHTML} setHighlightFunc={setHighlightFunc}/>
+                    <LeftPane frameURL={frameURL} rawHTML={rawHTML} setHighlightFunc={setHighlightFunc} />
                 </div>
                 <div>
-                    <RightPane frameURL={frameURL} conceptTerms={conceptTerms} xpaths={xpaths} highlight={highlightXPATH}/>
+                    <RightPane frameURL={frameURL} conceptTerms={conceptTerms} xpaths={xpaths} highlight={highlightXPATH} />
                 </div>
             </SplitPane>
+
 
         </div>
 

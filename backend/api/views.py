@@ -16,7 +16,9 @@ from lxml import etree
 from io import StringIO
 
 
-from classifiers.svm import classify as svmClassify
+from classifiers.svm_spacy import classify as svmSpacyClassify
+from classifiers.rf_tfidf import classify as rfTFIDF
+
 
 from classifiers.general import updateLabel_mongo
 
@@ -38,6 +40,7 @@ def getWebsite(request):
     # page = requests.get(body["url"]).text
 
     url = body["url"]
+    classifier = body["classifier"]
 
     # get soup 
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
@@ -48,7 +51,7 @@ def getWebsite(request):
     soup = Soup(website, features="lxml")    
 
     rawHTML, tree, contents = downloadRawHTML(soup, url)
-    xpaths, conceptTerms = parseAndLabel(tree) #concept terms also contains the cleaned text
+    xpaths, conceptTerms = parseAndLabel(tree, classifier) #concept terms also contains the cleaned text
     return JsonResponse({"rawHTML": contents, "conceptTerms": conceptTerms, "xpaths" : xpaths})
 
 def downloadRawHTML(soup, url):
@@ -79,13 +82,7 @@ def downloadRawHTML(soup, url):
 
     return html, tree, contents
 
-def parseAndLabel(tree):
-    #old soup method
-    # for script in soup(["script", "style", "button"]):                   
-    #     script.decompose()  
-
-    # elems = soup.body.findAll(text=True, recursive=True) 
-
+def parseAndLabel(tree, classifier):
     # lxml parsing
     find_text = etree.XPath("//text()")
     
@@ -97,25 +94,35 @@ def parseAndLabel(tree):
 
         cleaned = rawText.strip() 
         if cleaned != '\n' and cleaned != '':
-            label = classifyConceptTerm(cleaned)
+            label = classifyConceptTerm(cleaned, classifier)
             classified.append((cleaned, label))
             xpaths.append(xpath)
         
     return xpaths, classified
 
-def classifyConceptTerm(concept_term):
-    return svmClassify(concept_term)
+def classifyConceptTerm(concept_term, classifier):
+    
+    classifier = int(classifier)
+    
+    classifierMap = {
+        0 : rfTFIDF,
+        1 : svmSpacyClassify,
+        2 : svmSpacyClassify,
+        3 : svmSpacyClassify
+    }
+    return classifierMap[classifier](concept_term)
 
 
 @csrf_exempt
 def updateLabel(request):
     body_unicode = request.body
     body = json.loads(body_unicode)
-
     text = body["text"]
     label = body["label"]
+    xpath = body["xpath"]
+    url = body["url"]
 
-    updateLabel_mongo(text, label)
+    updateLabel_mongo(text, label, xpath, url)
 
     # todo, error catching and stuff
     return HttpResponse(status=200)

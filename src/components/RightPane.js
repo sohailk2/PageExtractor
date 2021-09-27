@@ -11,7 +11,7 @@ import Chart from "react-google-charts";
 const sizeOfDashboard = 300
 
 //todo make into an api
-const labels = ["Education", "Biography", "Research Interest", "Award", "Other"]
+const labels = ["Education", "Biography", "Research Interest", "Award", "Other", "Publication", "Coursework", "Associated University", "Email", "Address", "Phone", "Name"]
 
 const useStyles = makeStyles({
     root: {
@@ -83,7 +83,7 @@ export default function RightPane(props) {
         let elems = []
         for (let i = 0; i < data.length; i++) {
             elems.push(
-                <SimpleCard text={data[i][0]} label={data[i][1]} updateDashboard={updateDashboard} xpath={xpaths[i]} highlight={props.highlight} />
+                <SimpleCard text={data[i][0]} label={data[i][1]} url={props.frameURL} updateDashboard={updateDashboard} xpath={xpaths[i]} highlight={props.highlight} />
             )
         }
         return elems
@@ -121,7 +121,7 @@ function Metrics(props) {
                 loader={<div>Loading Chart</div>}
                 data={data}
                 options={{
-                    title: 'Label Innacuracy',
+                    title: 'Label Innacuracy (True Label vs what Classifier Predicted)',
                     chartArea: { width: '50%' },
                     isStacked: true,
                     hAxis: {
@@ -141,14 +141,14 @@ function Metrics(props) {
 
     function prettifyMetrics(metrics) {
 
-        const data = [
-            ['City', '2010 Population', '2000 Population'],
-            ['New York City, NY', 30, 60],
+        // const data = [
+            // ['City', '2010 Population', '2000 Population'],
+            // ['New York City, NY', 30, 60],
             // ['Los Angeles, CA', 3792000, 3694000],
             // ['Chicago, IL', 2695000, 2896000],
             // ['Houston, TX', 2099000, 1953000],
             // ['Philadelphia, PA', 1526000, 1517000],
-        ]
+        // ]
 
         let cleaned = [
             ["Label", ...labels],
@@ -206,7 +206,7 @@ function SimpleCard(props) {
     return (
         <Card className={classes.root}>
             <CardContent>
-                <LabelField classes={classes} text={props.text} label={props.label} updateDashboard={props.updateDashboard} />
+                <LabelField classes={classes} text={props.text} url={props.url} label={props.label} xpath={props.xpath} updateDashboard={props.updateDashboard} />
 
                 <Button variant="contained" color="primary" onClick={() => props.highlight(props.xpath)}>Highlight</Button>
                 <Typography className={classes.title} color="" gutterBottom>
@@ -232,7 +232,7 @@ function LabelField(props) {
                 flexWrap: 'wrap',
             }}>
                 {props.label}
-                <PopoverPopupState text={props.text} label={props.label} updateDashboard={props.updateDashboard} />
+                <PopoverPopupState text={props.text} label={props.label} url={props.url} xpath={props.xpath} updateDashboard={props.updateDashboard} />
             </div>
 
         </Typography >
@@ -262,7 +262,7 @@ function PopoverPopupState(props) {
                         }}
                     >
                         <Box p={2}>
-                            <UpdateLabel text={props.text} label={props.label} updateDashboard={props.updateDashboard} verify={() => { setDisabled(true); setVerifyLabel("Verified") }} />
+                            <UpdateLabel text={props.text} url={props.url} label={props.label} xpath={props.xpath} updateDashboard={props.updateDashboard} verify={() => { setDisabled(true); setVerifyLabel("Verified") }} />
                         </Box>
                     </Popover>
                 </div>
@@ -275,9 +275,8 @@ function UpdateLabel(props) {
     const backendURL = "http://localhost:8000/api/"
 
     // sends new label to backend
-    const update = (text, label) => {
-        var data = JSON.stringify({ "text": text, "label": label });
-
+    const update = (text, label, xpath, url) => {
+        var data = JSON.stringify({"label": label, "text": text, xpath: xpath, url: url});
         var config = {
             method: 'post',
             url: 'http://localhost:8000/api/updateLabel',
@@ -348,11 +347,11 @@ function UpdateLabel(props) {
 
                 <br></br>
 
-                <Button variant="contained" color="primary" onClick={() => { update(props.text, newLabel); props.updateDashboard(props.label, props.label); props.verify() }}>
+                <Button variant="contained" color="primary" onClick={() => { update(props.text, props.label, props.xpath, props.url); props.updateDashboard(props.label, props.label); props.verify() }}>
                     Correct
                 </Button>
                 <br></br>
-                <Button variant="contained" color="secondary" onClick={() => { update(props.text, newLabel); props.updateDashboard(props.label, newLabel); props.verify() }}>
+                <Button variant="contained" color="secondary" onClick={() => { update(props.text, newLabel, props.xpath, props.url); props.updateDashboard(props.label, newLabel); props.verify() }}>
                     Update
                 </Button>
             </FormControl>
